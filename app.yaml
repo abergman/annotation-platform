@@ -1,5 +1,5 @@
 # Digital Ocean App Platform Configuration
-# Simplified working configuration for annotat.ee
+# Complete multi-service configuration for annotat.ee
 
 name: annotation-platform
 region: ams3
@@ -9,7 +9,7 @@ domains:
     type: PRIMARY
 
 services:
-  # Main Node.js application
+  # Python FastAPI Backend - Main API Service
   - name: api
     source_dir: /
     dockerfile_path: Dockerfile.production
@@ -19,19 +19,24 @@ services:
       deploy_on_push: true
     
     instance_count: 1
-    instance_size_slug: basic-xxs
+    instance_size_slug: basic-xs
+    http_port: 8000
+    
+    routes:
+      - path: /api
+      - path: /health
     
     # Environment variables
     envs:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: "8080"
+        value: "8000"
       - key: HOST
         value: "0.0.0.0"
       - key: DOMAIN
         value: annotat.ee
-      - key: MONGODB_URI
+      - key: DATABASE_URL
         scope: RUN_TIME
         type: SECRET
       - key: JWT_SECRET  
@@ -40,18 +45,86 @@ services:
       - key: SESSION_SECRET
         scope: RUN_TIME
         type: SECRET
-    
-    # HTTP configuration
-    http_port: 8080
-    
-    routes:
-      - path: /
+      - key: SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: ALLOWED_ORIGINS
+        value: "https://annotat.ee,https://${frontend.PUBLIC_URL}"
     
     # Health check
     health_check:
-      http_path: /api/health
-      initial_delay_seconds: 30
-      period_seconds: 10
-      timeout_seconds: 5
-      success_threshold: 1
+      http_path: /health
+      initial_delay_seconds: 60
+      period_seconds: 30
+      timeout_seconds: 10
+      success_threshold: 2
       failure_threshold: 3
+
+  # Node.js WebSocket Server - Real-time Features  
+  - name: websocket
+    source_dir: /
+    dockerfile_path: Dockerfile.websocket
+    github:
+      repo: abergman/annotation-platform
+      branch: main
+      deploy_on_push: true
+    
+    instance_count: 1
+    instance_size_slug: basic-xs
+    http_port: 8001
+    
+    routes:
+      - path: /ws
+    
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: WEBSOCKET_PORT
+        value: "8001"
+      - key: API_URL
+        value: "${api.PUBLIC_URL}"
+      - key: FRONTEND_URL
+        value: "${frontend.PUBLIC_URL}"
+    
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 5
+      success_threshold: 2
+      failure_threshold: 3
+
+  # React Frontend - Static Site
+  - name: frontend
+    source_dir: /frontend
+    github:
+      repo: abergman/annotation-platform
+      branch: main
+      deploy_on_push: true
+    build_command: npm run build:production
+    
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    
+    routes:
+      - path: /
+        preserve_path_prefix: false
+    
+    envs:
+      - key: VITE_API_URL
+        value: "${api.PUBLIC_URL}/api"
+      - key: VITE_WS_URL
+        value: "wss://${websocket.PUBLIC_URL}/ws"
+      - key: VITE_APP_NAME
+        value: "Academic Annotation Platform"
+      - key: VITE_DOMAIN
+        value: annotat.ee
+
+# PostgreSQL Database (Managed)
+databases:
+  - name: annotation-db
+    engine: PG
+    version: "15"
+    size: db-s-1vcpu-1gb
+    num_nodes: 1
+    production: true
