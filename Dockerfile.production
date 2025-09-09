@@ -63,15 +63,15 @@ USER app
 ENV NODE_ENV=production
 ENV NPM_CONFIG_LOGLEVEL=warn
 ENV NPM_CONFIG_PRODUCTION=true
-ENV PORT=3000
+ENV PORT=8080
 ENV HOST=0.0.0.0
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Expose port
-EXPOSE ${PORT}
+EXPOSE 8080
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
