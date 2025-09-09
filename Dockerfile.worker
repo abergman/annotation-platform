@@ -1,4 +1,4 @@
-# WebSocket Service Dockerfile
+# Worker Service Dockerfile for Background Jobs
 # Optimized for Digital Ocean App Platform
 
 FROM node:20-alpine AS base
@@ -20,8 +20,8 @@ COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Copy source code
-COPY --chown=app:nodejs scripts/start-websocket.js scripts/
 COPY --chown=app:nodejs src/ src/
+COPY --chown=app:nodejs scripts/ scripts/
 
 # Create necessary directories with proper permissions
 RUN mkdir -p logs \
@@ -33,18 +33,14 @@ USER app
 
 # Environment variables
 ENV NODE_ENV=production
-ENV WS_PORT=3001
-ENV HOST=0.0.0.0
+ENV WORKER_TYPE=email
 
-# Health check for WebSocket
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:${WS_PORT}/health || exit 1
-
-# Expose port
-EXPOSE ${WS_PORT}
+# Health check
+HEALTHCHECK --interval=60s --timeout=10s --start-period=15s --retries=3 \
+    CMD node -e "console.log('Worker health check OK'); process.exit(0);"
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start WebSocket server
-CMD ["node", "scripts/start-websocket.js"]
+# Start worker based on type
+CMD ["sh", "-c", "node scripts/worker-${WORKER_TYPE}.js"]

@@ -1,0 +1,318 @@
+# Digital Ocean App Platform Configuration
+# Main production configuration for annotat.ee
+
+name: annotation-platform-production
+region: nyc1
+
+domains:
+  - domain: annotat.ee
+    type: PRIMARY
+    minimum_tls_version: "1.2"
+  - domain: www.annotat.ee
+    type: ALIAS
+
+services:
+  # Main Node.js application
+  - name: api
+    source_dir: /
+    dockerfile_path: Dockerfile.production
+    github:
+      repo: annotation-platform
+      branch: main
+      deploy_on_push: true
+    
+    instance_count: 2
+    instance_size_slug: basic-xxs
+    
+    # Environment variables
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: DOMAIN
+        value: annotat.ee
+      - key: SSL_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: info
+      - key: SESSION_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: MONGODB_URI
+        scope: RUN_TIME
+        type: SECRET
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: EMAIL_SMTP_HOST
+        scope: RUN_TIME
+        type: SECRET
+      - key: EMAIL_SMTP_USER
+        scope: RUN_TIME
+        type: SECRET
+      - key: EMAIL_SMTP_PASS
+        scope: RUN_TIME
+        type: SECRET
+      - key: STORAGE_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: STORAGE_SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SENTRY_DSN
+        scope: RUN_TIME
+        type: SECRET
+    
+    # HTTP configuration
+    http_port: 8080
+    
+    routes:
+      - path: /
+    
+    # Health check
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    
+    # Resource limits
+    cpu_kind: shared
+    
+    # Auto-scaling
+    autoscaling:
+      min_instance_count: 1
+      max_instance_count: 5
+      metrics:
+        - type: cpu
+          value: 80
+        - type: memory
+          value: 80
+
+  # WebSocket service
+  - name: websocket
+    source_dir: /
+    dockerfile_path: Dockerfile.websocket
+    github:
+      repo: annotation-platform
+      branch: main
+      deploy_on_push: true
+    
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: WS_PORT
+        value: "8081"
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: CORS_ORIGIN
+        value: https://annotat.ee
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+    
+    http_port: 8081
+    
+    routes:
+      - path: /socket.io
+    
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 15
+      period_seconds: 30
+      timeout_seconds: 10
+      success_threshold: 1
+      failure_threshold: 3
+
+# Database (MongoDB)
+databases:
+  - name: annotation-db
+    engine: MONGODB
+    version: "6"
+    size: basic-xs
+    num_nodes: 1
+    
+    # Database configuration
+    config:
+      sql_mode: TRADITIONAL
+      
+# Static sites (if serving static files)
+static_sites:
+  - name: static-assets
+    source_dir: /static
+    index_document: index.html
+    error_document: 404.html
+    routes:
+      - path: /static
+    
+    # Cache configuration
+    catchall_document: index.html
+    
+    envs:
+      - key: NODE_ENV
+        value: production
+
+# Workers (background jobs)
+workers:
+  - name: email-worker
+    source_dir: /
+    dockerfile_path: Dockerfile.worker
+    github:
+      repo: annotation-platform
+      branch: main
+      deploy_on_push: true
+    
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: WORKER_TYPE
+        value: email
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: EMAIL_SMTP_HOST
+        scope: RUN_TIME
+        type: SECRET
+      - key: EMAIL_SMTP_USER
+        scope: RUN_TIME
+        type: SECRET
+      - key: EMAIL_SMTP_PASS
+        scope: RUN_TIME
+        type: SECRET
+      - key: MONGODB_URI
+        scope: RUN_TIME
+        type: SECRET
+
+# Jobs (scheduled tasks)
+jobs:
+  - name: db-cleanup
+    source_dir: /
+    dockerfile_path: Dockerfile.production
+    github:
+      repo: annotation-platform
+      branch: main
+    
+    kind: CRON
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: JOB_TYPE
+        value: cleanup
+      - key: MONGODB_URI
+        scope: RUN_TIME
+        type: SECRET
+    
+    run_command: node scripts/cleanup.js
+
+  - name: backup-job
+    source_dir: /
+    dockerfile_path: Dockerfile.production
+    github:
+      repo: annotation-platform
+      branch: main
+    
+    kind: CRON
+    schedule: "0 4 * * *"  # Daily at 4 AM
+    
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: JOB_TYPE
+        value: backup
+      - key: MONGODB_URI
+        scope: RUN_TIME
+        type: SECRET
+      - key: STORAGE_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: STORAGE_SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+    
+    run_command: node scripts/backup.js
+
+# Alerts
+alerts:
+  - rule: CPU_UTILIZATION
+    disabled: false
+    operator: GREATER_THAN
+    value: 85
+    window: FIVE_MINUTES
+    
+  - rule: MEM_UTILIZATION
+    disabled: false
+    operator: GREATER_THAN
+    value: 85
+    window: FIVE_MINUTES
+    
+  - rule: RESTART_COUNT
+    disabled: false
+    operator: GREATER_THAN
+    value: 5
+    window: FIVE_MINUTES
+    
+  - rule: DEPLOYMENT_FAILED
+    disabled: false
+    
+  - rule: DOMAIN_FAILED
+    disabled: false
+
+# Features
+features:
+  - buildpack-stack: ubuntu-22
+
+# Ingress rules
+ingress:
+  load_balancer: ROUND_ROBIN
+  
+  # Security headers
+  headers:
+    - name: X-Frame-Options
+      value: DENY
+    - name: X-Content-Type-Options
+      value: nosniff
+    - name: X-XSS-Protection
+      value: "1; mode=block"
+    - name: Strict-Transport-Security
+      value: "max-age=31536000; includeSubDomains"
+    - name: Content-Security-Policy
+      value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' wss: ws:;"
+    - name: Referrer-Policy
+      value: strict-origin-when-cross-origin
+    - name: Permissions-Policy
+      value: "camera=(), microphone=(), geolocation=()"
+  
+  # Rate limiting
+  rules:
+    - component_name: api
+      match:
+        path:
+          prefix: "/api/"
+      action:
+        rate_limit:
+          requests_per_minute: 60
+    
+    - component_name: api
+      match:
+        path:
+          prefix: "/auth/"
+      action:
+        rate_limit:
+          requests_per_minute: 10

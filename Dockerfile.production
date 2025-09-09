@@ -1,70 +1,80 @@
-# Multi-stage Python FastAPI Production Dockerfile
+# Multi-stage Node.js Production Dockerfile
 # Optimized for Digital Ocean App Platform
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM node:20-alpine AS builder
 
 # Install system dependencies for building
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies for building)
+RUN npm ci --only=production=false && npm cache clean --force
+
+# Copy source code
+COPY . .
+
+# Build the application (if there are build steps)
+RUN npm run build 2>/dev/null || echo "No build script found, skipping..."
 
 # Production stage
-FROM python:3.11-slim
+FROM node:20-alpine AS production
 
 # Install runtime system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq5 \
+RUN apk add --no-cache \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app
+    dumb-init \
+    && addgroup -g 1001 -S nodejs \
+    && adduser -S app -u 1001 -G nodejs
 
 # Set working directory
 WORKDIR /app
 
-# Copy Python packages from builder stage
-COPY --from=builder /root/.local /home/app/.local
-ENV PATH=/home/app/.local/bin:$PATH
+# Copy package files
+COPY package*.json ./
 
-# Copy application source
-COPY src/ src/
-COPY alembic.ini .
-COPY .env.example .
+# Install only production dependencies
+RUN npm ci --only=production && npm cache clean --force
 
-# Create necessary directories
-RUN mkdir -p logs uploads exports static \
-    && chown -R app:app /app
+# Copy built application from builder stage
+COPY --from=builder --chown=app:nodejs /app/src ./src
+COPY --from=builder --chown=app:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=app:nodejs /app/static ./static 2>/dev/null || echo "No static directory found"
+
+# Create necessary directories with proper permissions
+RUN mkdir -p logs uploads exports tmp \
+    && chown -R app:nodejs /app \
+    && chmod -R 755 /app
 
 # Switch to non-root user
 USER app
 
 # Environment variables for production
-ENV PYTHONPATH=/app
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
 ENV NODE_ENV=production
-ENV DEBUG=False
+ENV NPM_CONFIG_LOGLEVEL=warn
+ENV NPM_CONFIG_PRODUCTION=true
+ENV PORT=3000
 ENV HOST=0.0.0.0
-ENV PORT=8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Expose port
-EXPOSE 8000
+EXPOSE ${PORT}
 
-# Start command
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
+CMD ["node", "src/index.js"]

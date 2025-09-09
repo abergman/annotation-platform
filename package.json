@@ -17,9 +17,21 @@
     "test:e2e": "jest tests/e2e",
     "test:performance": "jest tests/performance --testTimeout=30000",
     "test:websocket": "jest tests/realtime --testTimeout=30000",
+    "test:smoke": "jest tests/smoke --testTimeout=60000",
+    "test:critical": "jest tests/e2e --testNamePattern='critical' --testTimeout=60000",
     "lint": "eslint src tests --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint src tests --ext .js,.jsx,.ts,.tsx --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy:staging": "./scripts/deploy.sh staging",
+    "deploy:production": "./scripts/deploy.sh production",
+    "health-check": "node scripts/health-check.js",
+    "backup:db": "node scripts/backup.js",
+    "cleanup": "node scripts/cleanup.js",
+    "monitor": "node scripts/monitor.js",
+    "docker:build": "docker build -f Dockerfile.production -t annotation-platform:latest .",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
   },
   "dependencies": {
     "express": "^4.18.2",
