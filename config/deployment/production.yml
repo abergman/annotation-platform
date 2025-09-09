@@ -1,0 +1,168 @@
+# Production deployment configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: annotation-config
+  namespace: annotation-prod
+data:
+  # Application configuration
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  PORT: "3000"
+  
+  # Database configuration
+  DB_POOL_SIZE: "20"
+  DB_SSL_MODE: "require"
+  DB_TIMEOUT: "30000"
+  
+  # Redis configuration
+  REDIS_POOL_SIZE: "10"
+  REDIS_TIMEOUT: "5000"
+  
+  # Security settings
+  RATE_LIMIT_WINDOW: "900000"  # 15 minutes
+  RATE_LIMIT_MAX: "100"
+  JWT_EXPIRY: "24h"
+  
+  # Performance settings
+  COMPRESSION_ENABLED: "true"
+  CACHE_TTL: "3600"
+  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: annotation-app
+  namespace: annotation-prod
+  labels:
+    app: annotation
+    tier: application
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: annotation
+      tier: application
+  template:
+    metadata:
+      labels:
+        app: annotation
+        tier: application
+    spec:
+      containers:
+      - name: annotation-app
+        image: ghcr.io/your-org/annotation-app:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: annotation-secrets
+              key: database-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: annotation-secrets
+              key: jwt-secret
+        envFrom:
+        - configMapRef:
+            name: annotation-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: annotation-service
+  namespace: annotation-prod
+spec:
+  selector:
+    app: annotation
+    tier: application
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: annotation-ingress
+  namespace: annotation-prod
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - annotation.yourdomain.com
+    secretName: annotation-tls
+  rules:
+  - host: annotation.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: annotation-service
+            port:
+              number: 80
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: annotation-hpa
+  namespace: annotation-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: annotation-app
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
