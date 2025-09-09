@@ -10,7 +10,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
+    "noEmit": false,
+    "outDir": "dist",
     "jsx": "react-jsx",
 
     /* Linting - Relaxed for deployment */
