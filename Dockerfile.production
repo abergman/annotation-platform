@@ -1,68 +1,30 @@
-# Multi-stage Node.js Production Dockerfile
-# Optimized for Digital Ocean App Platform
+# Simple Node.js Production Dockerfile for Digital Ocean App Platform
+FROM node:20-alpine
 
-# Build stage
-FROM node:20-alpine AS builder
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init curl
 
-# Install system dependencies for building
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    git \
-    curl
-
-# Set working directory
+# Create app directory and user
+RUN addgroup -g 1001 -S nodejs && adduser -S app -u 1001 -G nodejs
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for building)
-RUN npm ci --only=production=false && npm cache clean --force
-
-# Copy source code
-COPY . .
-
-# Build the application (if there are build steps)
-RUN npm run build 2>/dev/null || echo "No build script found, skipping..."
-
-# Production stage
-FROM node:20-alpine AS production
-
-# Install runtime system dependencies
-RUN apk add --no-cache \
-    curl \
-    dumb-init \
-    && addgroup -g 1001 -S nodejs \
-    && adduser -S app -u 1001 -G nodejs
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
+# Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy built application from builder stage
-COPY --from=builder --chown=app:nodejs /app/src ./src
-COPY --from=builder --chown=app:nodejs /app/scripts ./scripts
-COPY --from=builder --chown=app:nodejs /app/static ./static 2>/dev/null || echo "No static directory found"
+# Copy source code
+COPY --chown=app:nodejs src ./src
 
-# Create necessary directories with proper permissions
-RUN mkdir -p logs uploads exports tmp \
-    && chown -R app:nodejs /app \
-    && chmod -R 755 /app
+# Create necessary directories
+RUN mkdir -p logs && chown -R app:nodejs /app
 
 # Switch to non-root user
 USER app
 
-# Environment variables for production
+# Environment variables
 ENV NODE_ENV=production
-ENV NPM_CONFIG_LOGLEVEL=warn
-ENV NPM_CONFIG_PRODUCTION=true
 ENV PORT=8080
 ENV HOST=0.0.0.0
 
@@ -73,8 +35,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Expose port
 EXPOSE 8080
 
-# Use dumb-init for proper signal handling
-ENTRYPOINT ["dumb-init", "--"]
-
 # Start the application
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "src/index.js"]
