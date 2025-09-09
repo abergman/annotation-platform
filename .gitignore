@@ -129,3 +129,8 @@ tmp/
 temp/
 .tmp/
 .temp/
+# Deployment environment files with secrets
+deployment/environments/*.env
+deployment/environments/.env.*
+!deployment/environments/*.example
+!deployment/environments/*.template
