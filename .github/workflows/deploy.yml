@@ -173,7 +173,7 @@ jobs:
         run: |
           echo "Deploying to staging environment..."
           # Update staging app spec
-          doctl apps update ${{ secrets.STAGING_APP_ID }} --spec .do/app.staging.yaml
+          doctl apps update ${{ secrets.STAGING_APP_ID }} --spec app-simple.yaml
           
           # Wait for deployment
           doctl apps wait ${{ secrets.STAGING_APP_ID }}
@@ -231,7 +231,7 @@ jobs:
           ./scripts/backup-db.sh production
           
           # Update production app spec
-          doctl apps update ${{ secrets.PRODUCTION_APP_ID }} --spec .do/app.production.yaml
+          doctl apps update ${{ secrets.PRODUCTION_APP_ID }} --spec app-simple.yaml
           
           # Wait for deployment with timeout
           timeout 900 doctl apps wait ${{ secrets.PRODUCTION_APP_ID }} || exit 1

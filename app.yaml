@@ -1,5 +1,5 @@
 # Digital Ocean App Platform Configuration
-# Working API-only configuration for annotat.ee
+# Multi-service deployment for annotat.ee
 
 name: annotation-platform
 region: ams3
@@ -7,9 +7,10 @@ region: ams3
 domains:
   - domain: annotat.ee
     type: PRIMARY
+    minimum_tls_version: "1.2"
 
 services:
-  # Main Node.js API Service (MongoDB backend)
+  # Main Node.js API Service
   - name: api
     source_dir: /
     dockerfile_path: Dockerfile.production
@@ -23,7 +24,8 @@ services:
     http_port: 8080
     
     routes:
-      - path: /
+      - path: /api
+      - path: /health
     
     # Environment variables
     envs:
@@ -44,6 +46,8 @@ services:
       - key: SESSION_SECRET
         scope: RUN_TIME
         type: SECRET
+      - key: CORS_ORIGIN
+        value: https://annotat.ee
     
     # Health check
     health_check:
@@ -54,5 +58,25 @@ services:
       success_threshold: 1
       failure_threshold: 3
 
-# Frontend temporarily removed due to build issues
-# Will add back after fixing TypeScript/build problems
+  # React Frontend Static Site
+  - name: frontend
+    source_dir: /frontend
+    dockerfile_path: frontend/Dockerfile.frontend
+    github:
+      repo: abergman/annotation-platform
+      branch: main
+      deploy_on_push: true
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    
+    routes:
+      - path: /
+        preserve_path_prefix: false
+    
+    envs:
+      - key: VITE_API_URL
+        value: https://annotat.ee/api
+      - key: VITE_APP_NAME
+        value: "Academic Annotation Platform"
+      - key: VITE_APP_VERSION
+        value: "1.0.0"
