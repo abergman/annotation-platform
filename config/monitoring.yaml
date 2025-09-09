@@ -1,0 +1,344 @@
+# System Monitoring Configuration for Academic Text Annotation System
+# This configuration defines monitoring thresholds, alert settings, and
+# performance metrics collection for academic research environments.
+
+# System resource monitoring thresholds
+system_thresholds:
+  cpu:
+    warning: 75      # CPU usage % that triggers warning
+    critical: 90     # CPU usage % that triggers critical alert
+    monitoring_interval: 30  # seconds
+    
+  memory:
+    warning: 80      # Memory usage % that triggers warning
+    critical: 95     # Memory usage % that triggers critical alert
+    monitoring_interval: 30  # seconds
+    
+  disk:
+    warning: 85      # Disk usage % that triggers warning
+    critical: 95     # Disk usage % that triggers critical alert
+    monitoring_interval: 60  # seconds
+    
+  load_average:
+    warning: 2.0     # Load average that triggers warning
+    critical: 4.0    # Load average that triggers critical alert
+    monitoring_interval: 30  # seconds
+
+# Application performance thresholds
+performance_thresholds:
+  request_processing:
+    slow_request_ms: 5000      # Request taking longer than 5s
+    very_slow_request_ms: 10000 # Request taking longer than 10s
+    timeout_ms: 30000          # Request timeout
+    
+  database_queries:
+    slow_query_ms: 1000        # Query taking longer than 1s
+    very_slow_query_ms: 5000   # Query taking longer than 5s
+    connection_timeout_s: 30   # Database connection timeout
+    max_connections: 100       # Maximum database connections
+    
+  response_times:
+    p50_threshold_ms: 500      # 50th percentile response time
+    p95_threshold_ms: 2000     # 95th percentile response time
+    p99_threshold_ms: 5000     # 99th percentile response time
+    
+  error_rates:
+    warning_rate_percent: 2    # 2% error rate triggers warning
+    critical_rate_percent: 5   # 5% error rate triggers critical
+    
+  throughput:
+    min_requests_per_minute: 1     # Minimum expected traffic
+    max_requests_per_minute: 1000  # Maximum expected traffic before scaling
+
+# Security monitoring configuration
+security_monitoring:
+  authentication:
+    failed_login_threshold: 5           # Failed logins per minute per IP
+    suspicious_activity_window: 300     # Time window for detecting patterns (seconds)
+    lockout_duration: 900              # Account lockout duration (seconds)
+    
+  access_patterns:
+    unusual_access_threshold: 100      # Requests per minute from single IP
+    geographic_anomaly_detection: true # Enable geo-location anomaly detection
+    user_agent_anomaly_detection: true # Detect suspicious user agents
+    
+  data_access:
+    bulk_download_threshold: 1000      # Records downloaded in single request
+    rapid_access_threshold: 50         # Rapid sequential access attempts
+    unauthorized_access_attempts: 3    # Failed authorization attempts
+
+# Academic-specific monitoring
+academic_monitoring:
+  annotation_quality:
+    inter_annotator_agreement_threshold: 0.7  # Minimum acceptable agreement
+    annotation_rate_min: 10                  # Minimum annotations per hour
+    annotation_rate_max: 200                 # Maximum annotations per hour (quality check)
+    
+  research_data:
+    data_export_monitoring: true             # Monitor data export activities
+    large_dataset_threshold: 10000           # Large dataset size (records)
+    concurrent_users_max: 50                 # Maximum concurrent annotators
+    
+  student_privacy:
+    anonymization_check: true               # Verify data anonymization
+    gdpr_compliance_check: true             # GDPR compliance monitoring
+    ferpa_compliance_check: true            # FERPA compliance monitoring
+    
+  project_health:
+    inactive_project_days: 30               # Days before project marked inactive
+    low_activity_threshold: 5               # Annotations per day threshold
+
+# Alert configuration
+alerting:
+  # Alert channels and delivery methods
+  channels:
+    email:
+      enabled: true
+      recipients:
+        - admin@university.edu
+        - research-team@university.edu
+      smtp_server: smtp.university.edu
+      smtp_port: 587
+      use_tls: true
+      
+    slack:
+      enabled: false
+      webhook_url: ""
+      channel: "#monitoring-alerts"
+      
+    webhook:
+      enabled: false
+      url: ""
+      
+    log_only:
+      enabled: true  # Always log alerts
+      
+  # Alert severity levels and escalation
+  severity_levels:
+    low:
+      notification_delay: 300      # 5 minutes delay before sending
+      escalation_time: 3600       # 1 hour before escalating
+      max_alerts_per_hour: 10     # Rate limiting
+      
+    medium:
+      notification_delay: 60       # 1 minute delay
+      escalation_time: 1800       # 30 minutes before escalating
+      max_alerts_per_hour: 5      # Rate limiting
+      
+    high:
+      notification_delay: 30       # 30 seconds delay
+      escalation_time: 900        # 15 minutes before escalating
+      max_alerts_per_hour: 3      # Rate limiting
+      
+    critical:
+      notification_delay: 0        # Immediate notification
+      escalation_time: 300        # 5 minutes before escalating
+      max_alerts_per_hour: 2      # Rate limiting
+      
+  # Alert suppression and grouping
+  suppression:
+    duplicate_alert_window: 300    # Suppress duplicates for 5 minutes
+    maintenance_mode: false        # Global alert suppression
+    quiet_hours:
+      enabled: false
+      start_time: "22:00"         # 10 PM
+      end_time: "08:00"           # 8 AM
+      timezone: "UTC"
+
+# Metrics collection configuration
+metrics_collection:
+  # Data retention policies
+  retention:
+    raw_metrics: 72              # Hours to keep raw metric data
+    aggregated_hourly: 720       # Hours to keep hourly aggregates (30 days)
+    aggregated_daily: 8760       # Hours to keep daily aggregates (365 days)
+    
+  # Collection intervals
+  intervals:
+    system_metrics: 30           # System metrics collection (seconds)
+    application_metrics: 60      # Application metrics collection (seconds)
+    database_metrics: 120        # Database metrics collection (seconds)
+    custom_metrics: 300          # Custom metrics collection (seconds)
+    
+  # Storage limits
+  limits:
+    max_metric_points: 100000    # Maximum metric points to store
+    max_memory_usage_mb: 500     # Maximum memory usage for metrics
+    cleanup_interval: 3600       # Cleanup interval (seconds)
+
+# Health check configuration
+health_checks:
+  # Individual component checks
+  components:
+    database:
+      enabled: true
+      timeout_seconds: 5
+      check_interval: 30
+      failure_threshold: 3         # Consecutive failures before unhealthy
+      
+    external_apis:
+      enabled: false               # Enable if using external APIs
+      timeout_seconds: 10
+      check_interval: 60
+      
+    file_system:
+      enabled: true
+      timeout_seconds: 2
+      check_interval: 60
+      paths_to_check:
+        - "/tmp"
+        - "logs/"
+        - "uploads/"
+        
+    memory_usage:
+      enabled: true
+      check_interval: 30
+      warning_threshold_mb: 1000
+      critical_threshold_mb: 2000
+      
+  # Overall health determination
+  overall_health:
+    require_all_healthy: false     # false = degraded if some components fail
+    critical_components:           # Components that must be healthy
+      - database
+      - file_system
+      
+# Performance optimization settings
+optimization:
+  # Automatic scaling triggers
+  auto_scaling:
+    enabled: false                 # Enable auto-scaling (if supported)
+    scale_up_threshold: 80        # CPU/Memory % to trigger scale up
+    scale_down_threshold: 20      # CPU/Memory % to trigger scale down
+    min_instances: 1
+    max_instances: 5
+    
+  # Cache optimization
+  caching:
+    enable_query_cache: true
+    cache_ttl_seconds: 300        # 5 minutes default TTL
+    max_cache_size_mb: 100
+    
+  # Database optimization
+  database:
+    connection_pool_size: 20
+    connection_pool_timeout: 30
+    query_timeout: 30
+    enable_query_logging: true
+    log_slow_queries: true
+
+# Backup and disaster recovery monitoring
+backup_monitoring:
+  # Database backup monitoring
+  database_backups:
+    enabled: true
+    expected_interval_hours: 24    # Expected backup frequency
+    retention_days: 30
+    monitor_backup_size: true
+    min_backup_size_mb: 10        # Minimum expected backup size
+    
+  # File system backup monitoring  
+  file_backups:
+    enabled: true
+    paths_to_monitor:
+      - "logs/"
+      - "uploads/"
+      - "exports/"
+    expected_interval_hours: 168   # Weekly backups
+    
+  # Disaster recovery checks
+  disaster_recovery:
+    test_restore_enabled: false   # Enable periodic restore tests
+    test_interval_days: 30       # Test restore every 30 days
+    recovery_time_objective_minutes: 60  # RTO target
+    recovery_point_objective_minutes: 15  # RPO target
+
+# Compliance monitoring for academic environments
+compliance_monitoring:
+  # Data protection compliance
+  data_protection:
+    monitor_data_access: true      # Monitor who accesses what data
+    log_data_exports: true         # Log all data exports
+    anonymization_verification: true # Verify data anonymization
+    
+  # User activity monitoring
+  user_activity:
+    track_user_sessions: true      # Track user login/logout
+    monitor_data_changes: true     # Monitor data modification
+    audit_admin_actions: true     # Audit administrative actions
+    
+  # Research integrity
+  research_integrity:
+    track_annotation_changes: true     # Track all annotation modifications
+    monitor_inter_rater_reliability: true # Monitor annotation quality
+    log_project_modifications: true    # Log project setting changes
+    
+# Notification templates
+notification_templates:
+  system_alert:
+    subject: "[ALERT] {severity} - {metric_name} threshold exceeded"
+    body: |
+      System Alert - {timestamp}
+      
+      Metric: {metric_name}
+      Current Value: {current_value}
+      Threshold: {threshold_value}
+      Severity: {severity}
+      
+      Description: {description}
+      
+      System: Text Annotation Platform
+      Environment: {environment}
+      
+  performance_degradation:
+    subject: "[PERFORMANCE] Response time degradation detected"
+    body: |
+      Performance Alert - {timestamp}
+      
+      Average response time has increased to {avg_response_time}ms
+      95th percentile: {p95_response_time}ms
+      
+      Top slow endpoints:
+      {slow_endpoints}
+      
+      Please investigate system performance.
+      
+  security_incident:
+    subject: "[SECURITY] Security event detected"
+    body: |
+      Security Alert - {timestamp}
+      
+      Event Type: {event_type}
+      Severity: {severity}
+      Source IP: {source_ip}
+      User: {user_id}
+      
+      Details: {details}
+      
+      Immediate investigation recommended.
+
+# Development and testing overrides
+development:
+  # Lower thresholds for development
+  system_thresholds:
+    cpu:
+      warning: 90
+      critical: 95
+    memory:
+      warning: 90
+      critical: 95
+      
+  # Disable some alerts in development
+  alerting:
+    channels:
+      email:
+        enabled: false
+      log_only:
+        enabled: true
+        
+  # Shorter retention in development
+  metrics_collection:
+    retention:
+      raw_metrics: 24
+      aggregated_hourly: 168
+      aggregated_daily: 720

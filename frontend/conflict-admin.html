@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conflict Resolution Administration</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .conflict-card {
+            transition: all 0.3s ease;
+        }
+        .conflict-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        .status-badge {
+            @apply px-2 py-1 rounded-full text-xs font-medium;
+        }
+        .status-detected { @apply bg-yellow-100 text-yellow-800; }
+        .status-assigned { @apply bg-blue-100 text-blue-800; }
+        .status-in_review { @apply bg-indigo-100 text-indigo-800; }
+        .status-voting { @apply bg-purple-100 text-purple-800; }
+        .status-expert_review { @apply bg-orange-100 text-orange-800; }
+        .status-resolved { @apply bg-green-100 text-green-800; }
+        
+        .severity-low { @apply border-l-4 border-green-400; }
+        .severity-medium { @apply border-l-4 border-yellow-400; }
+        .severity-high { @apply border-l-4 border-orange-400; }
+        .severity-critical { @apply border-l-4 border-red-400; }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        <i class="fas fa-balance-scale text-indigo-600 mr-2"></i>
+                        Conflict Resolution Administration
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="projectSelect" class="border rounded-md px-3 py-2 bg-white">
+                        <option value="">Select Project</option>
+                    </select>
+                    <button id="refreshBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-yellow-100 rounded-lg">
+                        <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-500">Total Conflicts</p>
+                        <p class="text-2xl font-semibold text-gray-900" id="totalConflicts">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <i class="fas fa-clock text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-500">Pending Resolution</p>
+                        <p class="text-2xl font-semibold text-gray-900" id="pendingConflicts">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-green-100 rounded-lg">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-500">Resolved</p>
+                        <p class="text-2xl font-semibold text-gray-900" id="resolvedConflicts">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-indigo-100 rounded-lg">
+                        <i class="fas fa-chart-line text-indigo-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-500">Avg Resolution Time</p>
+                        <p class="text-2xl font-semibold text-gray-900" id="avgResolutionTime">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Conflicts by Type</h3>
+                <canvas id="conflictTypeChart" width="400" height="300"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Resolution Effectiveness</h3>
+                <canvas id="resolutionChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+
+        <!-- Controls and Filters -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status Filter</label>
+                        <select id="statusFilter" class="border rounded-md px-3 py-2">
+                            <option value="">All Statuses</option>
+                            <option value="detected">Detected</option>
+                            <option value="assigned">Assigned</option>
+                            <option value="in_review">In Review</option>
+                            <option value="voting">Voting</option>
+                            <option value="expert_review">Expert Review</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Severity Filter</label>
+                        <select id="severityFilter" class="border rounded-md px-3 py-2">
+                            <option value="">All Severities</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Conflict Type</label>
+                        <select id="typeFilter" class="border rounded-md px-3 py-2">
+                            <option value="">All Types</option>
+                            <option value="span_overlap">Span Overlap</option>
+                            <option value="label_conflict">Label Conflict</option>
+                            <option value="quality_dispute">Quality Dispute</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button id="detectConflictsBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors">
+                        <i class="fas fa-search mr-1"></i> Detect Conflicts
+                    </button>
+                    <button id="exportDataBtn" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-download mr-1"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conflicts Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Active Conflicts</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Conflict Details
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Participants
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Progress
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="conflictsTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Dynamic content will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-12">
+            <i class="fas fa-clipboard-check text-gray-300 text-6xl mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No conflicts found</h3>
+            <p class="text-gray-500 mb-6">All annotations are in agreement, or no conflicts match your current filters.</p>
+            <button id="detectConflictsEmptyBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-search mr-2"></i> Run Conflict Detection
+            </button>
+        </div>
+    </div>
+
+    <!-- Conflict Details Modal -->
+    <div id="conflictModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Conflict Details</h3>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="conflictDetails" class="space-y-4">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button id="assignConflictBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-user-plus mr-1"></i> Assign Resolver
+                    </button>
+                    <button id="resolveConflictBtn" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                        <i class="fas fa-check mr-1"></i> Force Resolve
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Conflict Resolution Settings</h3>
+                    <button id="closeSettingsModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="settingsForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Enable Conflict Detection
+                            </label>
+                            <input type="checkbox" id="enableDetection" class="rounded">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Auto-merge Enabled
+                            </label>
+                            <input type="checkbox" id="autoMergeEnabled" class="rounded">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Span Overlap Threshold
+                            </label>
+                            <input type="number" id="overlapThreshold" min="0" max="1" step="0.1" 
+                                   class="w-full border rounded-md px-3 py-2">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Confidence Threshold
+                            </label>
+                            <input type="number" id="confidenceThreshold" min="0" max="1" step="0.1" 
+                                   class="w-full border rounded-md px-3 py-2">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Default Resolution Strategy
+                            </label>
+                            <select id="defaultStrategy" class="w-full border rounded-md px-3 py-2">
+                                <option value="voting">Voting</option>
+                                <option value="expert_review">Expert Review</option>
+                                <option value="auto_merge">Auto Merge</option>
+                                <option value="weighted_voting">Weighted Voting</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Resolution Timeout (hours)
+                            </label>
+                            <input type="number" id="resolutionTimeout" min="1" max="168" 
+                                   class="w-full border rounded-md px-3 py-2">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" id="cancelSettings" 
+                                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
+                            Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentProject = null;
+        let conflicts = [];
+        let conflictStats = {};
+        let charts = {};
+
+        // API Base URL
+        const API_BASE = '/api';
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadProjects();
+            setupCharts();
+        });
+
+        function initializeEventListeners() {
+            // Project selection
+            document.getElementById('projectSelect').addEventListener('change', handleProjectChange);
+            
+            // Refresh button
+            document.getElementById('refreshBtn').addEventListener('click', refreshData);
+            
+            // Filter controls
+            document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            document.getElementById('severityFilter').addEventListener('change', applyFilters);
+            document.getElementById('typeFilter').addEventListener('change', applyFilters);
+            
+            // Action buttons
+            document.getElementById('detectConflictsBtn').addEventListener('click', triggerConflictDetection);
+            document.getElementById('detectConflictsEmptyBtn').addEventListener('click', triggerConflictDetection);
+            document.getElementById('exportDataBtn').addEventListener('click', exportData);
+            
+            // Modal controls
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+            document.getElementById('closeSettingsModal').addEventListener('click', closeSettingsModal);
+            document.getElementById('assignConflictBtn').addEventListener('click', assignConflict);
+            document.getElementById('resolveConflictBtn').addEventListener('click', forceResolveConflict);
+            
+            // Settings form
+            document.getElementById('settingsForm').addEventListener('submit', saveSettings);
+            document.getElementById('cancelSettings').addEventListener('click', closeSettingsModal);
+        }
+
+        async function loadProjects() {
+            try {
+                const response = await fetch(`${API_BASE}/projects/`);
+                const projects = await response.json();
+                
+                const select = document.getElementById('projectSelect');
+                select.innerHTML = '<option value="">Select Project</option>';
+                
+                projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                showNotification('Error loading projects', 'error');
+            }
+        }
+
+        async function handleProjectChange(event) {
+            currentProject = event.target.value;
+            if (currentProject) {
+                await loadProjectData();
+            } else {
+                clearData();
+            }
+        }
+
+        async function loadProjectData() {
+            if (!currentProject) return;
+            
+            try {
+                // Load conflicts and stats in parallel
+                const [conflictsResponse, statsResponse] = await Promise.all([
+                    fetch(`${API_BASE}/conflicts/?project_id=${currentProject}&limit=100`),
+                    fetch(`${API_BASE}/conflicts/projects/${currentProject}/stats`)
+                ]);
+                
+                conflicts = await conflictsResponse.json();
+                conflictStats = await statsResponse.json();
+                
+                updateSummaryCards();
+                updateCharts();
+                renderConflictsTable();
+                
+            } catch (error) {
+                console.error('Error loading project data:', error);
+                showNotification('Error loading project data', 'error');
+            }
+        }
+
+        function updateSummaryCards() {
+            document.getElementById('totalConflicts').textContent = conflictStats.total_conflicts || 0;
+            document.getElementById('pendingConflicts').textContent = conflictStats.pending_conflicts_count || 0;
+            document.getElementById('resolvedConflicts').textContent = conflictStats.resolved_conflicts_count || 0;
+            
+            const avgTime = conflictStats.average_resolution_time_hours || 0;
+            document.getElementById('avgResolutionTime').textContent = 
+                avgTime < 24 ? `${avgTime.toFixed(1)}h` : `${(avgTime / 24).toFixed(1)}d`;
+        }
+
+        function setupCharts() {
+            // Conflict Type Chart
+            const typeCtx = document.getElementById('conflictTypeChart').getContext('2d');
+            charts.typeChart = new Chart(typeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Resolution Effectiveness Chart
+            const resCtx = document.getElementById('resolutionChart').getContext('2d');
+            charts.resolutionChart = new Chart(resCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Success Rate (%)',
+                        data: [],
+                        backgroundColor: '#10B981',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            // Update conflict type chart
+            if (conflictStats.type_breakdown) {
+                const types = Object.keys(conflictStats.type_breakdown);
+                const counts = Object.values(conflictStats.type_breakdown);
+                
+                charts.typeChart.data.labels = types.map(formatConflictType);
+                charts.typeChart.data.datasets[0].data = counts;
+                charts.typeChart.update();
+            }
+
+            // Update resolution effectiveness chart (placeholder data)
+            const strategies = ['Auto Merge', 'Voting', 'Expert Review', 'Weighted Voting'];
+            const effectiveness = [85, 78, 92, 88]; // Mock data
+            
+            charts.resolutionChart.data.labels = strategies;
+            charts.resolutionChart.data.datasets[0].data = effectiveness;
+            charts.resolutionChart.update();
+        }
+
+        function renderConflictsTable() {
+            const tbody = document.getElementById('conflictsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (!conflicts || conflicts.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            tbody.innerHTML = conflicts.map(conflict => `
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="showConflictDetails(${conflict.id})">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="severity-${conflict.severity_level} pl-2">
+                                <div class="text-sm font-medium text-gray-900">
+                                    ${formatConflictType(conflict.conflict_type)}
+                                </div>
+                                <div class="text-sm text-gray-500 truncate" style="max-width: 300px;">
+                                    ${conflict.conflict_description}
+                                </div>
+                                <div class="text-xs text-gray-400 mt-1">
+                                    Score: ${(conflict.conflict_score * 100).toFixed(1)}% | 
+                                    Detected: ${formatDate(conflict.detected_at)}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="status-badge status-${conflict.status}">
+                            ${formatStatus(conflict.status)}
+                        </span>
+                        <div class="text-xs text-gray-400 mt-1">
+                            ${conflict.severity_level}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900">
+                            Annotations: ${conflict.annotation_a_id}, ${conflict.annotation_b_id}
+                        </div>
+                        <div class="text-xs text-gray-400">
+                            Votes: ${conflict.vote_count} | Resolutions: ${conflict.resolution_count}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${renderProgressBar(conflict)}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <button onclick="event.stopPropagation(); viewConflict(${conflict.id})" 
+                                    class="text-indigo-600 hover:text-indigo-900 text-sm">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); assignConflict(${conflict.id})" 
+                                    class="text-blue-600 hover:text-blue-900 text-sm">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); resolveConflict(${conflict.id})" 
+                                    class="text-green-600 hover:text-green-900 text-sm">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderProgressBar(conflict) {
+            const statusOrder = ['detected', 'assigned', 'in_review', 'voting', 'expert_review', 'resolved'];
+            const currentIndex = statusOrder.indexOf(conflict.status);
+            const progress = currentIndex >= 0 ? ((currentIndex + 1) / statusOrder.length) * 100 : 0;
+            
+            return `
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-indigo-600 h-2 rounded-full" style="width: ${progress}%"></div>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">${Math.round(progress)}% complete</div>
+            `;
+        }
+
+        async function showConflictDetails(conflictId) {
+            try {
+                const response = await fetch(`${API_BASE}/conflicts/${conflictId}?include_details=true`);
+                const conflictData = await response.json();
+                
+                const detailsContainer = document.getElementById('conflictDetails');
+                detailsContainer.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-2">Conflict Information</h4>
+                            <dl class="space-y-2 text-sm">
+                                <div><dt class="font-medium">Type:</dt><dd>${formatConflictType(conflictData.conflict_type)}</dd></div>
+                                <div><dt class="font-medium">Status:</dt><dd>${formatStatus(conflictData.status)}</dd></div>
+                                <div><dt class="font-medium">Severity:</dt><dd>${conflictData.severity_level}</dd></div>
+                                <div><dt class="font-medium">Score:</dt><dd>${(conflictData.conflict_score * 100).toFixed(1)}%</dd></div>
+                                <div><dt class="font-medium">Detected:</dt><dd>${formatDate(conflictData.detected_at)}</dd></div>
+                            </dl>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-2">Resolution Progress</h4>
+                            <div class="space-y-2">
+                                <div class="text-sm">
+                                    <span class="font-medium">Resolutions:</span> ${conflictData.resolutions ? conflictData.resolutions.length : 0}
+                                </div>
+                                <div class="text-sm">
+                                    <span class="font-medium">Votes:</span> ${conflictData.votes ? conflictData.votes.length : 0}
+                                </div>
+                                <div class="text-sm">
+                                    <span class="font-medium">Participants:</span> ${conflictData.participants ? conflictData.participants.length : 0}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h4 class="font-medium text-gray-900 mb-2">Description</h4>
+                        <p class="text-sm text-gray-600">${conflictData.conflict_description}</p>
+                    </div>
+                    
+                    ${conflictData.votes && conflictData.votes.length > 0 ? `
+                        <div class="mt-4">
+                            <h4 class="font-medium text-gray-900 mb-2">Recent Votes</h4>
+                            <div class="space-y-2">
+                                ${conflictData.votes.slice(0, 3).map(vote => `
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span>${vote.voter_username || 'Anonymous'}: ${vote.vote_choice}</span>
+                                        <span class="text-gray-400">${formatDate(vote.cast_at)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+                
+                document.getElementById('conflictModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading conflict details:', error);
+                showNotification('Error loading conflict details', 'error');
+            }
+        }
+
+        async function triggerConflictDetection() {
+            if (!currentProject) {
+                showNotification('Please select a project first', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/conflicts/detect`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        project_id: parseInt(currentProject),
+                        check_new_only: true,
+                        force_detection: false
+                    })
+                });
+                
+                const result = await response.json();
+                showNotification('Conflict detection started in background', 'success');
+                
+                // Refresh data after a delay
+                setTimeout(() => {
+                    loadProjectData();
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Error triggering conflict detection:', error);
+                showNotification('Error triggering conflict detection', 'error');
+            }
+        }
+
+        function applyFilters() {
+            // This would filter the conflicts array based on the selected filters
+            // For now, just re-render the table
+            renderConflictsTable();
+        }
+
+        function closeModal() {
+            document.getElementById('conflictModal').classList.add('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        async function refreshData() {
+            if (currentProject) {
+                await loadProjectData();
+                showNotification('Data refreshed successfully', 'success');
+            }
+        }
+
+        function exportData() {
+            if (!conflicts || conflicts.length === 0) {
+                showNotification('No data to export', 'warning');
+                return;
+            }
+            
+            // Convert conflicts to CSV
+            const csv = convertToCSV(conflicts);
+            downloadCSV(csv, `conflicts_project_${currentProject}_${new Date().toISOString().split('T')[0]}.csv`);
+        }
+
+        // Utility functions
+        function formatConflictType(type) {
+            const types = {
+                'span_overlap': 'Span Overlap',
+                'label_conflict': 'Label Conflict',
+                'quality_dispute': 'Quality Dispute',
+                'span_mismatch': 'Span Mismatch',
+                'context_disagreement': 'Context Disagreement'
+            };
+            return types[type] || type;
+        }
+
+        function formatStatus(status) {
+            const statuses = {
+                'detected': 'Detected',
+                'assigned': 'Assigned',
+                'in_review': 'In Review',
+                'voting': 'Voting',
+                'expert_review': 'Expert Review',
+                'resolved': 'Resolved',
+                'archived': 'Archived'
+            };
+            return statuses[status] || status;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function showNotification(message, type = 'info') {
+            // Simple notification - in a real app you'd use a proper notification library
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'warning' ? 'bg-yellow-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        function convertToCSV(data) {
+            const headers = ['ID', 'Type', 'Status', 'Severity', 'Score', 'Description', 'Detected At'];
+            const rows = data.map(conflict => [
+                conflict.id,
+                conflict.conflict_type,
+                conflict.status,
+                conflict.severity_level,
+                conflict.conflict_score,
+                conflict.conflict_description,
+                conflict.detected_at
+            ]);
+            
+            return [headers, ...rows].map(row => 
+                row.map(field => `"${field}"`).join(',')
+            ).join('\n');
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function clearData() {
+            conflicts = [];
+            conflictStats = {};
+            document.getElementById('totalConflicts').textContent = '-';
+            document.getElementById('pendingConflicts').textContent = '-';
+            document.getElementById('resolvedConflicts').textContent = '-';
+            document.getElementById('avgResolutionTime').textContent = '-';
+            document.getElementById('conflictsTableBody').innerHTML = '';
+            document.getElementById('emptyState').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

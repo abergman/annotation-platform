@@ -1,0 +1,91 @@
+{
+  "name": "academic-annotation-platform",
+  "version": "1.0.0",
+  "description": "Academic annotation platform for collaborative document analysis",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "websocket": "node scripts/start-websocket.js",
+    "websocket:dev": "nodemon scripts/start-websocket.js",
+    "build": "npm run lint && npm run typecheck",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:e2e": "jest tests/e2e",
+    "test:performance": "jest tests/performance --testTimeout=30000",
+    "test:websocket": "jest tests/realtime --testTimeout=30000",
+    "lint": "eslint src tests --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src tests --ext .js,.jsx,.ts,.tsx --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "joi": "^17.9.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.10.0",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.0",
+    "socket.io": "^4.7.2",
+    "winston": "^3.11.0",
+    "redis": "^4.6.8",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "jest": "^29.6.4",
+    "@babel/preset-env": "^7.22.15",
+    "@babel/preset-typescript": "^7.22.15",
+    "@types/jest": "^29.5.5",
+    "@types/express": "^4.17.17",
+    "@types/mongoose": "^5.11.97",
+    "@types/bcryptjs": "^2.4.2",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/cors": "^2.8.13",
+    "@types/uuid": "^9.0.2",
+    "@types/multer": "^1.4.7",
+    "supertest": "^6.3.3",
+    "mongodb-memory-server": "^8.15.1",
+    "puppeteer": "^21.1.1",
+    "nodemon": "^3.0.1",
+    "eslint": "^8.48.0",
+    "typescript": "^5.2.2",
+    "ts-node": "^10.9.1",
+    "artillery": "^2.0.0-31",
+    "@types/supertest": "^2.0.12",
+    "jest-environment-node": "^29.6.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/tests"],
+    "testMatch": ["**/*.test.js", "**/*.spec.js"],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/index.js",
+      "!src/**/*.d.ts",
+      "!**/node_modules/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "lcov", "html"],
+    "coverageThreshold": {
+      "global": {
+        "branches": 85,
+        "functions": 85,
+        "lines": 85,
+        "statements": 85
+      }
+    },
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testTimeout": 10000
+  },
+  "babel": {
+    "presets": [
+      ["@babel/preset-env", { "targets": { "node": "18" } }]
+    ]
+  }
+}

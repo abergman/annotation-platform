@@ -1,0 +1,59 @@
+# Node.js WebSocket Server Dockerfile
+# Optimized for Digital Ocean App Platform
+
+FROM node:18-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Create app directory
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application source
+COPY scripts/ scripts/
+COPY src/websocket-server.js src/
+
+# Create logs directory
+RUN mkdir -p logs && chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
+
+# Environment variables
+ENV NODE_ENV=production
+ENV WEBSOCKET_PORT=8001
+ENV HOST=0.0.0.0
+
+# Health check endpoint - simple HTTP server for health
+RUN echo 'import http from "http"; \
+const server = http.createServer((req, res) => { \
+  if (req.url === "/health") { \
+    res.writeHead(200, {"Content-Type": "application/json"}); \
+    res.end(JSON.stringify({status: "healthy", service: "websocket"})); \
+  } else { \
+    res.writeHead(404); \
+    res.end("Not Found"); \
+  } \
+}); \
+server.listen(8001, "0.0.0.0"); \
+console.log("Health check server listening on port 8001");' > src/health-server.js
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Expose port
+EXPOSE 8001
+
+# Start WebSocket server with health endpoint
+CMD ["sh", "-c", "node src/health-server.js & node scripts/start-websocket.js"]

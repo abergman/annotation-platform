@@ -1,0 +1,310 @@
+# Logging Configuration for Academic Text Annotation System
+# This configuration supports structured logging with JSON format for production
+# and human-readable format for development.
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  
+  json:
+    format: '%(message)s'
+  
+  simple:
+    format: '%(levelname)s - %(message)s'
+  
+  performance:
+    format: '%(asctime)s - PERF - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+filters:
+  request_context:
+    (): src.middleware.logging_middleware.RequestContextFilter
+  
+  performance_filter:
+    (): src.utils.logger.PerformanceFilter
+  
+  security_filter:
+    (): src.utils.logger.SecurityFilter
+  
+  audit_filter:
+    (): src.utils.logger.AuditFilter
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: detailed
+    stream: ext://sys.stdout
+  
+  console_errors:
+    class: logging.StreamHandler
+    level: ERROR
+    formatter: detailed
+    stream: ext://sys.stderr
+  
+  # Main application log with rotation
+  application_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/application.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 10
+    encoding: utf8
+    filters: [request_context]
+  
+  # API request/response logs with daily rotation
+  api_requests:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/api_requests.log
+    when: midnight
+    interval: 1
+    backupCount: 30
+    encoding: utf8
+    filters: [request_context]
+  
+  # Performance monitoring logs
+  performance:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/performance.log
+    when: midnight
+    interval: 1
+    backupCount: 30
+    encoding: utf8
+    filters: [performance_filter, request_context]
+  
+  # Security event logs (longer retention)
+  security:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: WARNING
+    formatter: json
+    filename: logs/security.log
+    when: midnight
+    interval: 1
+    backupCount: 90  # 3 months retention
+    encoding: utf8
+    filters: [security_filter, request_context]
+  
+  # Audit trail logs (longest retention)
+  audit:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/audit_trail.log
+    when: midnight
+    interval: 1
+    backupCount: 365  # 1 year retention
+    encoding: utf8
+    filters: [audit_filter, request_context]
+  
+  # Error logs with immediate flushing
+  error_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: ERROR
+    formatter: json
+    filename: logs/errors.log
+    when: midnight
+    interval: 1
+    backupCount: 90
+    encoding: utf8
+    filters: [request_context]
+  
+  # Database query logs
+  database:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/database.log
+    when: midnight
+    interval: 1
+    backupCount: 30
+    encoding: utf8
+
+loggers:
+  # Main application logger
+  academic_annotation:
+    level: INFO
+    handlers: [console, application_file, error_file]
+    propagate: false
+  
+  # API request logger
+  api_requests:
+    level: INFO
+    handlers: [api_requests]
+    propagate: false
+  
+  # Performance logger
+  performance:
+    level: INFO
+    handlers: [performance, console_errors]
+    propagate: false
+  
+  # Security logger
+  security:
+    level: WARNING
+    handlers: [security, console_errors]
+    propagate: false
+  
+  # Audit trail logger
+  audit_trail:
+    level: INFO
+    handlers: [audit]
+    propagate: false
+  
+  # Error logger
+  errors:
+    level: ERROR
+    handlers: [error_file, console_errors]
+    propagate: false
+  
+  # Database logger
+  database:
+    level: INFO
+    handlers: [database]
+    propagate: false
+  
+  # SQLAlchemy loggers
+  sqlalchemy.engine:
+    level: WARNING
+    handlers: [database]
+    propagate: false
+  
+  sqlalchemy.pool:
+    level: WARNING
+    handlers: [database]
+    propagate: false
+  
+  # FastAPI/Uvicorn loggers
+  uvicorn:
+    level: INFO
+    handlers: [console, application_file]
+    propagate: false
+  
+  uvicorn.access:
+    level: INFO
+    handlers: [api_requests]
+    propagate: false
+  
+  uvicorn.error:
+    level: ERROR
+    handlers: [error_file, console_errors]
+    propagate: false
+  
+  fastapi:
+    level: INFO
+    handlers: [application_file]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [console, application_file]
+
+# Log rotation settings
+log_rotation:
+  # Maximum log file size before rotation (in bytes)
+  max_file_size: 104857600  # 100MB
+  
+  # Number of backup files to keep
+  backup_count:
+    application: 10
+    api_requests: 30
+    performance: 30
+    security: 90     # 3 months
+    audit: 365       # 1 year
+    errors: 90
+    database: 30
+  
+  # Compression for old log files
+  compress_rotated: true
+  
+  # Log file permissions
+  file_permissions: 644
+  
+  # Directory permissions
+  directory_permissions: 755
+
+# Monitoring and alerting settings
+monitoring:
+  # Log file size monitoring (in MB)
+  max_log_file_size_mb: 500
+  
+  # Disk usage threshold for log directory (in %)
+  max_disk_usage_percent: 85
+  
+  # Error rate thresholds
+  error_rate_thresholds:
+    warning: 5   # 5% error rate triggers warning
+    critical: 10 # 10% error rate triggers critical alert
+  
+  # Performance thresholds
+  performance_thresholds:
+    slow_request_ms: 5000      # 5 seconds
+    very_slow_request_ms: 10000 # 10 seconds
+    slow_query_ms: 1000        # 1 second
+    very_slow_query_ms: 5000   # 5 seconds
+  
+  # Security event monitoring
+  security_monitoring:
+    failed_login_threshold: 5     # Failed logins per minute
+    suspicious_activity_window: 300 # 5 minutes
+    rate_limit_violations: 10     # Per minute
+  
+  # Health check intervals (in seconds)
+  health_check_intervals:
+    system_metrics: 30
+    log_analysis: 300    # 5 minutes
+    alert_checking: 60   # 1 minute
+
+# Development vs Production settings
+environments:
+  development:
+    console_level: DEBUG
+    file_level: INFO
+    enable_sql_echo: true
+    log_request_body: true
+    log_response_body: true
+    
+  testing:
+    console_level: WARNING
+    file_level: DEBUG
+    enable_sql_echo: false
+    log_request_body: false
+    log_response_body: false
+    
+  production:
+    console_level: ERROR
+    file_level: INFO
+    enable_sql_echo: false
+    log_request_body: true
+    log_response_body: false
+    structured_logging: true
+    
+# Academic-specific settings
+academic_settings:
+  # Student privacy protection
+  anonymize_student_data: true
+  
+  # Research data logging
+  log_annotation_changes: true
+  log_inter_annotator_agreement: true
+  log_project_statistics: true
+  
+  # Compliance requirements
+  gdpr_compliance: true
+  ferpa_compliance: true
+  
+  # Data retention policies
+  student_data_retention_days: 2555  # 7 years
+  research_data_retention_days: 3650 # 10 years
+  
+  # Export capabilities for research
+  enable_research_exports: true
+  anonymize_exports: true

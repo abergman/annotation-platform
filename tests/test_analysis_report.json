@@ -1,0 +1,173 @@
+{
+  "analysis_timestamp": "2025-09-08T15:22:38.075211",
+  "test_categories": {
+    "Unit Tests": {
+      "Models": [
+        "test_user.py - User model validation, relationships, authentication",
+        "test_project.py - Project model CRUD, permissions, metadata",
+        "test_text.py - Text model file handling, processing states",
+        "test_annotation.py - Annotation model spans, validation, confidence",
+        "test_label.py - Label model hierarchy, categories, usage tracking"
+      ],
+      "Core": [
+        "test_security.py - JWT tokens, password hashing, auth dependencies"
+      ],
+      "Utils": [
+        "test_text_processor.py - File processing, text cleaning, statistics"
+      ]
+    },
+    "Integration Tests": {
+      "API": [
+        "test_auth_endpoints.py - Registration, login, profile management",
+        "test_project_endpoints.py - Project CRUD, permissions, search"
+      ]
+    },
+    "Configuration": [
+      "conftest.py - Test fixtures, database setup, authentication",
+      "pytest.ini - Test configuration, coverage settings, markers"
+    ]
+  },
+  "coverage_areas": {
+    "Authentication & Security": {
+      "password_hashing": "\u2705 Comprehensive",
+      "jwt_tokens": "\u2705 Creation, verification, expiration",
+      "user_registration": "\u2705 Validation, duplicates, edge cases",
+      "login_flow": "\u2705 Success, failures, inactive users",
+      "authorization": "\u2705 Token validation, user permissions"
+    },
+    "Data Models": {
+      "user_model": "\u2705 CRUD, validation, relationships",
+      "project_model": "\u2705 Ownership, permissions, metadata",
+      "text_model": "\u2705 Content processing, file handling",
+      "annotation_model": "\u2705 Spans, validation, confidence scoring",
+      "label_model": "\u2705 Hierarchy, categories, usage tracking"
+    },
+    "API Endpoints": {
+      "auth_endpoints": "\u2705 Register, login, profile, logout",
+      "project_endpoints": "\u2705 CRUD, search, pagination, permissions",
+      "text_endpoints": "\ud83d\udfe1 Planned (not implemented yet)",
+      "annotation_endpoints": "\ud83d\udfe1 Planned (not implemented yet)",
+      "export_endpoints": "\ud83d\udfe1 Planned (not implemented yet)"
+    },
+    "File Processing": {
+      "text_files": "\u2705 UTF-8, encoding fallbacks",
+      "docx_files": "\u2705 Paragraphs, tables, error handling",
+      "pdf_files": "\u2705 Multi-page, text extraction",
+      "csv_files": "\u2705 Data parsing, validation",
+      "file_upload": "\u2705 Validation, error handling"
+    },
+    "Utilities": {
+      "text_cleaning": "\u2705 Whitespace, formatting normalization",
+      "text_statistics": "\u2705 Word count, sentences, paragraphs",
+      "export_functions": "\ud83d\udfe1 Ready for testing (utils created)"
+    },
+    "Database": {
+      "model_relationships": "\u2705 Foreign keys, cascading",
+      "data_integrity": "\u2705 Constraints, validation",
+      "transactions": "\u2705 Commit, rollback scenarios"
+    }
+  },
+  "test_files": [
+    {
+      "path": "tests/conftest.py",
+      "type": "Configuration",
+      "description": "Test fixtures, database setup, authentication helpers",
+      "lines_estimated": 300,
+      "key_fixtures": [
+        "test_db",
+        "test_user",
+        "auth_headers",
+        "test_project",
+        "test_annotation"
+      ]
+    },
+    {
+      "path": "tests/unit/models/test_user.py",
+      "type": "Unit Test",
+      "description": "Comprehensive User model testing",
+      "lines_estimated": 400,
+      "test_classes": 1,
+      "test_methods": 15
+    },
+    {
+      "path": "tests/unit/models/test_project.py",
+      "type": "Unit Test",
+      "description": "Project model CRUD and relationship testing",
+      "lines_estimated": 350,
+      "test_classes": 1,
+      "test_methods": 12
+    },
+    {
+      "path": "tests/unit/models/test_text.py",
+      "type": "Unit Test",
+      "description": "Text model file handling and processing",
+      "lines_estimated": 380,
+      "test_classes": 1,
+      "test_methods": 14
+    },
+    {
+      "path": "tests/unit/models/test_annotation.py",
+      "type": "Unit Test",
+      "description": "Annotation model spans and validation",
+      "lines_estimated": 420,
+      "test_classes": 1,
+      "test_methods": 16
+    },
+    {
+      "path": "tests/unit/models/test_label.py",
+      "type": "Unit Test",
+      "description": "Label model hierarchy and categorization",
+      "lines_estimated": 400,
+      "test_classes": 1,
+      "test_methods": 15
+    },
+    {
+      "path": "tests/unit/core/test_security.py",
+      "type": "Unit Test",
+      "description": "Security functions and JWT authentication",
+      "lines_estimated": 350,
+      "test_classes": 4,
+      "test_methods": 25
+    },
+    {
+      "path": "tests/unit/utils/test_text_processor.py",
+      "type": "Unit Test",
+      "description": "File processing and text utilities",
+      "lines_estimated": 450,
+      "test_classes": 6,
+      "test_methods": 30
+    },
+    {
+      "path": "tests/integration/api/test_auth_endpoints.py",
+      "type": "Integration Test",
+      "description": "Authentication API endpoint testing",
+      "lines_estimated": 500,
+      "test_classes": 5,
+      "test_methods": 25
+    },
+    {
+      "path": "tests/integration/api/test_project_endpoints.py",
+      "type": "Integration Test",
+      "description": "Project management API testing",
+      "lines_estimated": 450,
+      "test_classes": 5,
+      "test_methods": 20
+    }
+  ],
+  "metrics": {
+    "total_test_files": 10,
+    "estimated_total_lines": 4000,
+    "estimated_test_methods": 172,
+    "unit_tests": 7,
+    "integration_tests": 2,
+    "coverage_percentage_estimate": "85-90%",
+    "test_types": [
+      "unit",
+      "integration",
+      "api",
+      "security",
+      "database",
+      "performance"
+    ]
+  }
+}
