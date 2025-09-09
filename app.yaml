@@ -1,5 +1,5 @@
 # Digital Ocean App Platform Configuration
-# Complete multi-service configuration for annotat.ee
+# Working API-only configuration for annotat.ee
 
 name: annotation-platform
 region: ams3
@@ -9,7 +9,7 @@ domains:
     type: PRIMARY
 
 services:
-  # Python FastAPI Backend - Main API Service
+  # Main Node.js API Service (MongoDB backend)
   - name: api
     source_dir: /
     dockerfile_path: Dockerfile.production
@@ -20,23 +20,22 @@ services:
     
     instance_count: 1
     instance_size_slug: basic-xs
-    http_port: 8000
+    http_port: 8080
     
     routes:
-      - path: /api
-      - path: /health
+      - path: /
     
     # Environment variables
     envs:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: "8000"
+        value: "8080"
       - key: HOST
         value: "0.0.0.0"
       - key: DOMAIN
         value: annotat.ee
-      - key: DATABASE_URL
+      - key: MONGODB_URI
         scope: RUN_TIME
         type: SECRET
       - key: JWT_SECRET  
@@ -45,44 +44,15 @@ services:
       - key: SESSION_SECRET
         scope: RUN_TIME
         type: SECRET
-      - key: SECRET_KEY
-        scope: RUN_TIME
-        type: SECRET
-      - key: ALLOWED_ORIGINS
-        value: "https://annotat.ee,https://${frontend.PUBLIC_URL}"
     
     # Health check
     health_check:
-      http_path: /health
-      initial_delay_seconds: 60
-      period_seconds: 30
-      timeout_seconds: 10
-      success_threshold: 2
+      http_path: /api/health
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
       failure_threshold: 3
 
-  # React Frontend - Static Site
-  - name: frontend
-    source_dir: /frontend
-    github:
-      repo: abergman/annotation-platform
-      branch: main
-      deploy_on_push: true
-    
-    environment_slug: node-js
-    build_command: npm run build:production
-    
-    routes:
-      - path: /
-        preserve_path_prefix: false
-    
-    envs:
-      - key: VITE_API_URL
-        value: "${api.PUBLIC_URL}/api"
-      - key: VITE_WS_URL
-        value: "wss://annotation-platform-coxrq.ondigitalocean.app/ws"
-      - key: VITE_APP_NAME
-        value: "Academic Annotation Platform"
-      - key: VITE_DOMAIN
-        value: annotat.ee
-
-# Database temporarily removed - will add after frontend works
+# Frontend temporarily removed due to build issues
+# Will add back after fixing TypeScript/build problems
