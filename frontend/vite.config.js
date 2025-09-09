@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -17,9 +17,9 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
-    target: 'es2015',
-    minify: 'esbuild',
+    sourcemap: false,
+    target: 'esnext',
+    minify: 'terser',
     rollupOptions: {
       output: {
         manualChunks: undefined
@@ -28,13 +28,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': path.resolve(process.cwd(), 'src')
     }
   },
-  esbuild: {
-    target: 'es2015'
-  },
   define: {
-    global: 'globalThis'
+    'process.env': process.env
   }
 })

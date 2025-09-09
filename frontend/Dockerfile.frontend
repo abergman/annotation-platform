@@ -1,10 +1,10 @@
 # Frontend Static Site Dockerfile
 # Optimized for Digital Ocean App Platform static sites
 
-FROM node:20-alpine AS builder
+FROM node:18-alpine AS builder
 
-# Install additional tools for better compatibility
-RUN apk add --no-cache python3 make g++
+# Install additional tools and libc6-compat for better Alpine compatibility
+RUN apk add --no-cache python3 make g++ libc6-compat
 
 # Set working directory
 WORKDIR /app/frontend
@@ -12,18 +12,19 @@ WORKDIR /app/frontend
 # Set Node environment
 ENV NODE_ENV=production
 ENV CI=true
+ENV VITE_NODE_ENV=production
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with verbose logging
-RUN npm ci --verbose --no-audit
+# Clean install with platform-specific settings
+RUN npm ci --only=production=false --platform=linux --arch=x64
 
 # Copy source code
 COPY . .
 
-# Build the application (skip type-check for deployment speed)
-RUN npm run build:deploy
+# Build the application with explicit command
+RUN npx vite build --mode production
 
 # Production stage with nginx
 FROM nginx:alpine AS production
