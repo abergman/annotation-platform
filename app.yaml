@@ -61,7 +61,7 @@ services:
   # React Frontend Static Site
   - name: frontend
     source_dir: /frontend
-    dockerfile_path: frontend/Dockerfile.frontend
+    dockerfile_path: Dockerfile.frontend
     github:
       repo: abergman/annotation-platform
       branch: main
