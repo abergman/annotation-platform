@@ -7,7 +7,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        border: '#e5e7eb',
+        input: '#ffffff',
+        ring: '#3b82f6',
+        background: '#ffffff',
+        foreground: '#111827',
         primary: {
+          DEFAULT: '#3b82f6',
+          foreground: '#ffffff',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -21,6 +28,8 @@ export default {
           950: '#172554',
         },
         secondary: {
+          DEFAULT: '#6b7280',
+          foreground: '#ffffff',
           50: '#f9fafb',
           100: '#f3f4f6',
           200: '#e5e7eb',
@@ -32,6 +41,22 @@ export default {
           800: '#1f2937',
           900: '#111827',
           950: '#030712',
+        },
+        muted: {
+          DEFAULT: '#f3f4f6',
+          foreground: '#6b7280',
+        },
+        accent: {
+          DEFAULT: '#f3f4f6',
+          foreground: '#111827',
+        },
+        destructive: {
+          DEFAULT: '#ef4444',
+          foreground: '#ffffff',
+        },
+        card: {
+          DEFAULT: '#ffffff',
+          foreground: '#111827',
         }
       },
       fontFamily: {

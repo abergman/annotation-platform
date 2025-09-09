@@ -3,14 +3,21 @@
 
 FROM node:20-alpine AS builder
 
+# Install additional tools for better compatibility
+RUN apk add --no-cache python3 make g++
+
 # Set working directory
 WORKDIR /app/frontend
+
+# Set Node environment
+ENV NODE_ENV=production
+ENV CI=true
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with verbose logging
+RUN npm ci --verbose --no-audit
 
 # Copy source code
 COPY . .
