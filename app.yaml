@@ -74,9 +74,9 @@ services:
         preserve_path_prefix: false
     
     envs:
-      - key: VITE_API_URL
+      - key: REACT_APP_API_URL
         value: https://annotat.ee/api
-      - key: VITE_APP_NAME
+      - key: REACT_APP_NAME
         value: "Academic Annotation Platform"
-      - key: VITE_APP_VERSION
+      - key: REACT_APP_VERSION
         value: "1.0.0"
