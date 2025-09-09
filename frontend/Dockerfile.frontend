@@ -23,8 +23,8 @@ RUN npm ci --only=production=false --platform=linux --arch=x64
 # Copy source code
 COPY . .
 
-# Build the application with explicit command
-RUN npx vite build --mode production
+# Build the application using npm script
+RUN npm run build:deploy
 
 # Production stage with nginx
 FROM nginx:alpine AS production
