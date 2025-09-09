@@ -60,40 +60,6 @@ services:
       success_threshold: 2
       failure_threshold: 3
 
-  # Node.js WebSocket Server - Real-time Features  
-  - name: websocket
-    source_dir: /
-    dockerfile_path: Dockerfile.websocket
-    github:
-      repo: abergman/annotation-platform
-      branch: main
-      deploy_on_push: true
-    
-    instance_count: 1
-    instance_size_slug: basic-xs
-    http_port: 8001
-    
-    routes:
-      - path: /ws
-    
-    envs:
-      - key: NODE_ENV
-        value: production
-      - key: WEBSOCKET_PORT
-        value: "8001"
-      - key: API_URL
-        value: "${api.PUBLIC_URL}"
-      - key: FRONTEND_URL
-        value: "${frontend.PUBLIC_URL}"
-    
-    health_check:
-      http_path: /health
-      initial_delay_seconds: 30
-      period_seconds: 30
-      timeout_seconds: 5
-      success_threshold: 2
-      failure_threshold: 3
-
   # React Frontend - Static Site
   - name: frontend
     source_dir: /frontend
@@ -101,10 +67,9 @@ services:
       repo: abergman/annotation-platform
       branch: main
       deploy_on_push: true
-    build_command: npm run build:production
     
-    instance_count: 1
-    instance_size_slug: basic-xxs
+    environment_slug: node-js
+    build_command: npm run build:production
     
     routes:
       - path: /
@@ -114,16 +79,10 @@ services:
       - key: VITE_API_URL
         value: "${api.PUBLIC_URL}/api"
       - key: VITE_WS_URL
-        value: "wss://${websocket.PUBLIC_URL}/ws"
+        value: "wss://annotation-platform-coxrq.ondigitalocean.app/ws"
       - key: VITE_APP_NAME
         value: "Academic Annotation Platform"
       - key: VITE_DOMAIN
         value: annotat.ee
 
-# PostgreSQL Database (Managed) - Create new cluster
-databases:
-  - name: annotation-db
-    engine: PG
-    version: "15"
-    size: db-s-1vcpu-1gb
-    num_nodes: 1
+# Database temporarily removed - will add after frontend works
