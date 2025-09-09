@@ -120,12 +120,10 @@ services:
       - key: VITE_DOMAIN
         value: annotat.ee
 
-# PostgreSQL Database (Managed)
+# PostgreSQL Database (Managed) - Create new cluster
 databases:
   - name: annotation-db
-    cluster_name: annotation-cluster
     engine: PG
     version: "15"
     size: db-s-1vcpu-1gb
     num_nodes: 1
-    production: true
