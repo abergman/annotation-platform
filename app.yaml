@@ -123,6 +123,7 @@ services:
 # PostgreSQL Database (Managed)
 databases:
   - name: annotation-db
+    cluster_name: annotation-cluster
     engine: PG
     version: "15"
     size: db-s-1vcpu-1gb
